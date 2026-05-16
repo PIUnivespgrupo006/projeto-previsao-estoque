@@ -5,10 +5,10 @@ from statistics import median
 app = Flask(__name__)
 
 # ==========================================
-# FUNÇÃO PARA REMOVER OUTLIERS (IQR)
+# REMOVER OUTLIERS (IQR)
 # ==========================================
 def remover_outliers(lista):
-    
+
     if len(lista) < 4:
         return lista
 
@@ -40,15 +40,15 @@ def remover_outliers(lista):
 
 
 # ==========================================
-# ROTA PRINCIPAL
+# HOME
 # ==========================================
 @app.route('/')
 def home():
-    return "API de previsão funcionando!"
+    return "API NOVA FUNCIONANDO"
 
 
 # ==========================================
-# ROTA DE PREVISÃO
+# PREVISÃO
 # ==========================================
 @app.route('/prever', methods=['POST'])
 def prever():
@@ -63,14 +63,13 @@ def prever():
                 "mensagem": "Nenhum dado recebido"
             }), 400
 
-        # ==========================================
-        # ORGANIZAR VENDAS POR PRODUTO
-        # ==========================================
         vendas_por_produto = defaultdict(list)
 
+        # ==========================================
+        # ORGANIZAR DADOS
+        # ==========================================
         for item in dados:
 
-            # Validação básica
             if (
                 "produto" not in item or
                 "total_vendido" not in item
@@ -84,39 +83,59 @@ def prever():
             except:
                 continue
 
-            # Ignorar valores inválidos
+            # ignorar inválidos
             if quantidade <= 0:
                 continue
 
             vendas_por_produto[produto].append(quantidade)
 
+        previsoes = []
+
         # ==========================================
         # CALCULAR PREVISÕES
         # ==========================================
-        previsoes = []
-
         for produto, vendas in vendas_por_produto.items():
 
-            # Remover outliers
             vendas_filtradas = remover_outliers(vendas)
 
             if len(vendas_filtradas) == 0:
                 continue
 
-            media = sum(vendas_filtradas) / len(vendas_filtradas)
+            # ==========================================
+            # TOTAL FILTRADO
+            # ==========================================
+            total_filtrado = sum(vendas_filtradas)
 
-            previsao = round(media * 30)
+            # ==========================================
+            # MÉDIA MENSAL (12 MESES)
+            # ==========================================
+            media_mensal = total_filtrado / 12
+
+            previsao = round(media_mensal)
+
+            # ==========================================
+            # NÍVEL DE CONFIANÇA
+            # ==========================================
+            qtd = len(vendas_filtradas)
+
+            if qtd >= 10:
+                confianca = "Alta"
+            elif qtd >= 5:
+                confianca = "Média"
+            else:
+                confianca = "Baixa"
 
             previsoes.append({
                 "produto": produto,
-                "media_diaria": round(media, 2),
+                "media_mensal": round(media_mensal, 2),
                 "previsao_proximo_mes": previsao,
                 "quantidade_registros": len(vendas),
-                "registros_utilizados": len(vendas_filtradas)
+                "registros_utilizados": qtd,
+                "confianca": confianca
             })
 
         # ==========================================
-        # TOP 5 PRODUTOS
+        # TOP 5
         # ==========================================
         top_5 = sorted(
             previsoes,
